@@ -26,7 +26,7 @@ if(!function_exists('getPageSection'))
 							$content = preg_split('/<!--more-->/i', apply_filters('the_content',$post->post_content)); 
 						}
 						
-						$section = min($section,count($content));
+						$section = min($section,(count($content) -1));
 						for($c = 0, $csize = count($content); $c < $csize; $c++) {  
 							$content[$c] = apply_filters('the_content', $content[$c]);  
 						}  
