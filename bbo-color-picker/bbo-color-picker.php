@@ -124,7 +124,6 @@ window.onload = function(){
 </script>
         <canvas id="myCanvas" width="578" height="276"></canvas>
         <br />
-        <?php echo bbo_color_hex( $post->ID); ?>
             <input type="hidden" id="bbo_color_field" name="bbo_color_field" value="<?php echo $content[0];  ?>" /> 
             <?php
 		}
