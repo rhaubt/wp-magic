@@ -1,12 +1,12 @@
 <?php
 /*
-Plugin Name: Name Of The Plugin
-Plugin URI: http://URI_Of_Page_Describing_Plugin_and_Updates
-Description: A brief description of the Plugin.
-Version: The Plugin's Version Number, e.g.: 1.0
-Author: Name Of The Plugin Author
-Author URI: http://URI_Of_The_Plugin_Author
-License: A "Slug" license name e.g. GPL2
+Plugin Name: BBO Settings Manager
+Plugin URI: http://bebetteronline.com
+Description: Be Better Onlines, wordpress frameworke.
+Version: 1.0
+Author: Robin Westerlundh
+Author URI: http://robinwesterlundh.se
+License: GPL2
 */
 ?>
 <?php
@@ -16,6 +16,7 @@ define('BBO_SETTINGS_FOLDER', dirname(plugin_basename(__FILE__)));
 define('BBO_SETTINGS_URL', $siteurl.'/wp-content/plugins/' . BBO_SETTINGS_FOLDER);
 include("bbo-styling.php");
 include("modules/custum-wellcome.php");
+include("modules/hide-menus.php");
 
 /*
 //Helper for future editing
@@ -46,11 +47,11 @@ function bbo_admin_menu() {
 		"BBO Settings",
 		"BBO Settings",
 		8,
-		__FILE__,
+		"settings-page",
 		"bbo_admin_settings"/*,
 		BBO_SETTINGS_URL."/img/skruv-small.png"*/
 	); 
-	add_submenu_page(__FILE__,'Content Matching','Content Matching','8','content-matching','bbo_admin_content_matching');
+	add_submenu_page('settings-page','Content Matching','Content Matching','8','content-page','bbo_admin_content_matching');
 }
 
 function bbo_admin_settings(){
