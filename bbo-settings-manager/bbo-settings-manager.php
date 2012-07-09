@@ -18,6 +18,8 @@ include("bbo-styling.php");
 include("modules/custum-wellcome.php");
 include("modules/hide-menus.php");
 
+include("modules/browser.php");
+
 /*
 //Helper for future editing
 For Options

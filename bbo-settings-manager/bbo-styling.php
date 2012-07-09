@@ -14,6 +14,12 @@
         wp_enqueue_style( 'bbo-style','' ,array('colors'), 'version', true);
     }
 
+function bbo_custom_login() { 
+echo '<link rel="stylesheet" type="text/css" href="'.plugin_dir_url( __FILE__ ).'bbo-style.css" />'; 
+}
+add_action('login_head', 'bbo_custom_login');
+
+
     //Dont want em to remove my nice bbo style
     if(is_admin())
     {
@@ -30,6 +36,22 @@ function change_wp_logo()
 	     $logo->meta = array('title' => 'BBO Admin') ;
 	     $wp_admin_bar->add_node($logo);
 	}
+
+function bbo_admin_bar_render() {
+     global $wp_admin_bar;
+     $wp_admin_bar->remove_menu('about');
+     $wp_admin_bar->remove_menu('user-info');
+     //$wp_admin_bar->remove_menu('user-actions');
+     
+     
+    $wp_admin_bar->remove_menu('about'); 
+    $wp_admin_bar->remove_menu('wporg'); 
+    $wp_admin_bar->remove_menu('documentation'); 
+    $wp_admin_bar->remove_menu('support-forums'); 
+    $wp_admin_bar->remove_menu('feedback'); 
+   
+}
+add_action( 'wp_before_admin_bar_render', 'bbo_admin_bar_render' );
 
 
 ?>

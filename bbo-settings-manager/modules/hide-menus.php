@@ -4,6 +4,19 @@ $restricted =   array();
 $nodes = array();
 $theme_sub_menus = array();
 $settings_sub_menus = array();
+$menu_nodes = array();
+
+if("true" == get_option("rename-post")){
+	add_action( 'init', 'change_post_object_label' );
+	add_action( 'admin_menu', 'change_post_menu_label' );
+}
+
+
+
+
+if("true" == get_option("hide-profile")){
+ $menu_nodes[] ="edit-profile";
+}
 
 if("true" == get_option("hide-dashbord")){
   $restricted[] = __('Dashboard');
@@ -115,6 +128,18 @@ function remove_nodes()
 		}
 add_action('wp_before_admin_bar_render','remove_nodes');
 
+function remove_menu_nodes()
+		{
+	       global $menu_nodes;
+	       global $wp_admin_bar;
+			foreach($menu_nodes as $id)
+			{
+			 $wp_admin_bar->remove_menu($id);
+			}
+		}
+add_action('wp_before_admin_bar_render','remove_menu_nodes');
+
+
 
 
 function remove_menus () {
@@ -127,5 +152,34 @@ global $restricted;
 		}
 }
 add_action('admin_menu', 'remove_menus');
+
+
+function change_post_menu_label() {
+	global $menu;
+	global $submenu;
+        $newname = get_option("rename-post-name");
+
+	$menu[5][0] = $newname;
+	$submenu['edit.php'][5][0] = $newname;
+	$submenu['edit.php'][10][0] = 'Add '.$newname;
+	$submenu['edit.php'][16][0] = $newname.' Tags';
+	echo '';
+}
+function change_post_object_label() {
+        
+	global $wp_post_types;
+        $newname = get_option("rename-post-name");
+	$labels = &$wp_post_types['post']->labels;
+	$labels->name = $newname;
+	$labels->singular_name = $newname;
+	$labels->add_new = 'Add '.$newname;
+	$labels->add_new_item = 'Add '.$newname;
+	$labels->edit_item = 'Edit '.$newname;
+	$labels->new_item = $newname;
+	$labels->view_item = 'View '.$newname;
+	$labels->search_items = 'Search '.$newname;
+	$labels->not_found = 'No '.$newname.' found';
+	$labels->not_found_in_trash = 'No '.$newname.' found in Trash';
+}
 
 ?>

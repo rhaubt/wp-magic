@@ -1268,3 +1268,75 @@ rgba(0, 0, 0, 0.3) 0 -1px 0;
 input.button-primary:hover, button.button-primary:hover, a.button-primary:hover {
 border-color: #9B1D68;
 }
+
+#bbo-admin-form{width:500px; margin:10px 20px; font-weight:bold; color:#DB2290;}
+#bbo-admin-form div.line:nth-of-type(2n){background:#BDC2CC; color:#4B5576;} 
+#bbo-admin-form .checkbox,#bbo-admin-form .selectbox,#bbo-admin-form .textfield{float:right;}
+#bbo-admin-form label{margin:10px;}
+#bbo-admin-form label.thick{line-height:30px;}
+#bbo-admin-form h1,#bbo-admin-form h2,#bbo-admin-form h3{margin-top: 10px;}
+#bbo-admin-form .submit-btn{margin:10px 0px;}
+
+#admin-container{}
+
+
+.login #nav a, .login #backtoblog a {
+color: 
+#DB2290!important;
+}
+
+.login h1 a {
+background-image: url('img/bbo-wordpress-logo-no-brand.png');
+}
+
+
+/* simple fileds*/
+
+ul.simple-fields-file-browser-list {
+	margin: 1em;
+}
+ul.simple-fields-file-browser-list li {
+	border-top: 1px solid #DFDFDF;
+	clear: both;
+	margin: 0;
+	padding-top: 1em;
+	padding-bottom: 1em;
+}
+ul.simple-fields-file-browser-list .thumbnail {
+	float: left;
+}
+ul.simple-fields-file-browser-list .simple-fields-file-browser-list-file-info {
+	float: left;
+	margin-left: 1em;
+}
+ul.simple-fields-file-browser-list .thumbnail img {
+	width: 46px;
+}
+ul.simple-fields-file-browser-list li p {
+	margin: 0;
+}
+ul.simple-fields-file-browser-list h3 {
+	margin-top: 0;
+	margin-bottom: 0.25em;
+}
+
+.simple-fields-metabox-field-file {
+	height: 64px;
+}
+
+.simple-fields-metabox-field-file-col1 {
+	width: 46px;
+	height: 46px;
+	background-color: #eee;
+	border: 1px solid #ddd;
+	overflow: hidden;
+}
+.simple-fields-metabox-field-file-col1 img {
+	width: 46px;
+	display: block;
+}
+.simple-fields-metabox-field-file-col2 {
+	margin-left: 56px;
+	margin-top: -46px;
+}
+

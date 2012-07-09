@@ -2,7 +2,7 @@
 
 
 //Hiding wellcome panel so we can replace it with out own
-add_action( 'load-index.php', 'hide_welcome_panel' );
+add_action('load-index.php', 'hide_welcome_panel' );
 
 function hide_welcome_panel() {
     $user_id = get_current_user_id();
@@ -67,12 +67,8 @@ function bbo_add_dashboard_widgets() {
 
 
 function bbo_dashboard_widget_function() {
-	// Display whatever it is you want to show
+	//Display whatever it is you want to show
 	echo "Hello World, I'm a great Dashboard Widget";
 } 
 
-
-
-
 ?>
-

@@ -1,5 +1,6 @@
-
-<form action="" method="post">
+<br>
+<h2>Be Better Online - Admin Settings</h2>
+<form id="bbo-admin-form" action="" method="post">
 <input type="hidden" name="page" value="settings-page">
 <?php 
 $checkBoxes = array(
@@ -25,16 +26,29 @@ new CheckBox("Hide Settings - Discussion","hide-settings-discussion"),
 new CheckBox("Hide Settings - Media","hide-settings-media"), 
 new CheckBox("Hide Settings - Privacy","hide-settings-privacy"), 
 new CheckBox("Hide Settings - Permalinks","hide-settings-permalink"), 
-new CheckBox("Hide BBO Settings","hide-bbosettings"));
-?>
+new CheckBox("Hide BBO Settings","hide-bbosettings"),
+new CheckBox("Hide Profile","hide-profile"));
+?> 
 <?php
 	foreach($checkBoxes as $checkBox )
 	{
 		$checkBox->generate_checkbox();
 	}	
  ?>
-	
-<input type="submit" name="save" value="Save">
+
+<?php 
+	if(isset($_POST['save'])){ 
+	   update_option('rename-post',$_POST['rename-post']);
+	   update_option('rename-post-name',$_POST['rename-post-name']);
+	 }
+?>
+<div class="line">
+<label class="label" fore="rename-post-name">Rename Post posttype : </label>	
+<input type="textfield" placeholder="Post Name" name="rename-post-name" value="<?php echo get_option('rename-post-name');?>">  <input class="checkbox" <?php if(get_option('rename-post') == "true"){echo 'checked="checked"';} ?> type="checkbox" name="rename-post" value="true" />
+</div>
+
+
+<input  type="submit" name="save" value="Save">
 </form>
 <?php
 class CheckBox
@@ -53,7 +67,8 @@ class CheckBox
     function generate_checkbox()
     {
 	?>
-        <label fore="<?php echo $this->id; ?>"><?php echo $this->name; ?> : </label>
+<div class="line">
+        <label class="label" fore="<?php echo $this->id; ?>"><?php echo $this->name; ?> : </label>
 	<?php 
 	if(isset($_POST['save'])){ 
 	   update_option($this->id,$_POST[$this->id]);
@@ -61,19 +76,20 @@ class CheckBox
 	
 	$options = get_option($this->id);
 	?>
-        <input <?php if($options == "true"){echo 'checked="checked"';} ?> type="checkbox" name="<?php echo $this->id; ?>" value="true" />
-	
- <br>
+        <input class="checkbox" <?php if($options == "true"){echo 'checked="checked"';} ?> type="checkbox" name="<?php echo $this->id; ?>" value="true" />
+<div style="clear: both;"></div>
+	</div>
     <?php
     }
  
 }
 
-if(isset($_POST['save'])){ 
+if(isset($_POST['save']))
+ { 
 	   ?>
 <script type="text/javascript">
 location.reload(true);
 </script>
          <?php
-	 }
+  }
 ?>
