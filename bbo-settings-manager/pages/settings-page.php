@@ -38,8 +38,12 @@ new CheckBox("Hide Profile","hide-profile"));
 
 <?php 
 	if(isset($_POST['save'])){ 
+		if(isset($_POST['rename-post'])){ 
 	   update_option('rename-post',$_POST['rename-post']);
 	   update_option('rename-post-name',$_POST['rename-post-name']);
+		}else{
+           update_option('rename-post',"");
+		}
 	 }
 ?>
 <div class="line">
@@ -70,8 +74,13 @@ class CheckBox
 <div class="line">
         <label class="label" fore="<?php echo $this->id; ?>"><?php echo $this->name; ?> : </label>
 	<?php 
-	if(isset($_POST['save'])){ 
-	   update_option($this->id,$_POST[$this->id]);
+	if(isset($_POST['save']) ){ 
+	   if(isset($_POST[$this->id]))
+	   {
+	   	update_option($this->id,$_POST[$this->id]);
+	   }else{
+		update_option($this->id,'');
+		}
 	 }
 	
 	$options = get_option($this->id);
@@ -88,7 +97,7 @@ if(isset($_POST['save']))
  { 
 	   ?>
 <script type="text/javascript">
-location.reload(true);
+ location.reload(true);
 </script>
          <?php
   }

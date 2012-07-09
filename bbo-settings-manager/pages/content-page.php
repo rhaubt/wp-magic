@@ -1,34 +1,43 @@
+<?php
+/*Här kan vi lägga till nya content kopplingar */
+
+$contentBoxes = array();
+$imageBoxes   = array();
+$textBoxes    = array();
+
+?>
 <br>
 <h2>Be Better Online - Content Matching</h2>
 <form id="bbo-admin-form" action="" method="post">
 <input type="hidden" name="page" value="content-page">
-<?php 
-$contentBoxes = array(new ContentBox("Footer text","cb1"), new ContentBox("Sidebar Text","cb2"));
-$imageBoxes   = array(new ImageBox('Bild i headern','ib1'));
-?>
 <?php
+
 	foreach($contentBoxes as $contentBox )
 	{
 		$contentBox->generate_dropdown();
 	}	
+
  ?>
 
 <?php
+
 	foreach($imageBoxes as $imagebox)
 	{
 		$imagebox->generate_imagebox();
-	}	
+	}
+	
  ?>
-	<?php 
-$tb = new TextBox('Email','tb1'); 
-$tb->generate_textbox();
 
-$tb = new TextBox('Logo text','tb3'); 
-$tb->generate_textbox();
 
-$tb = new TextBox('Citat nr1','tb3'); 
-$tb->generate_textbox();
-?>
+<?php
+
+	foreach($textBoxes as $textbox)
+	{
+		$textbox->generate_textbox();
+	}
+	
+ ?>
+
 <input class="submit-btn" type="submit" name="save" value="Save">
 </form>
 
@@ -48,11 +57,13 @@ class ContentBox
 
     function generate_dropdown()
     {
-        $mypages = get_pages( array( 'child_of' => $post->ID, 'sort_column' => 'post_date', 'sort_order' => 'desc' ) );
+        $mypages = get_pages( array( 'sort_column' => 'post_date', 'sort_order' => 'desc' ) );
 	?>
 	<?php if(isset($_POST['save']))
 		{ 
-		    update_option($this->id,$_POST[$this->id]);
+		    if(isset($_POST[$this->id])){
+		   	 update_option($this->id,$_POST[$this->id]);
+                    }
 		}
          ?>
         <div class="line">
@@ -89,24 +100,30 @@ class ImageBox
 
     function generate_imagebox()
     {
-
 	global $wpdb; 
-	
+	$field_unique_id = "bbo_img_id_".$this->id;
 	echo '<style type="text/css">#postdivrich{display:none;}</style>';
-
-		
-                $field_unique_id = "bbo_img_id_".$this->id;
-		$custom   =  get_option($field_unique_id);
-		$file_id  =  $custom;
-		$image_thumbnail = wp_get_attachment_image_src($file_id, 'thumbnail', true );
-		$image_thumbnail = $image_thumbnail[0];
-		$image_html = "<img src='$image_thumbnail' alt='' />";
-		$file_name = rawurlencode(get_the_title($file_id));
-                if(isset($_POST['save']))
+       
+	 if(isset($_POST['save']))
 		{ 
-		  update_option($field_unique_id,$_POST[$field_unique_id]);
+		  if(isset($_POST[$field_unique_id]))
+		  {
+		   update_option($field_unique_id,$_POST[$field_unique_id]);
+                  }else{
+		   update_option($field_unique_id,"");
+		  }
 		}
+             
 
+		$custom          =  get_option($field_unique_id);
+		$file_id         =  $custom;
+		$image_thumbnail =  wp_get_attachment_image_src($file_id, 'thumbnail', true );
+		$image_thumbnail =  $image_thumbnail[0];
+		$image_html      =  "<img src='$image_thumbnail' alt='' />";
+		$file_name       =  rawurlencode(get_the_title($file_id));
+		$image_name      =  $file_name;
+
+               
 
 		echo "<h2>Ladda upp ".$this->name."</h2>";
 		echo "<div id='admin-mat-thumb'>";
@@ -138,9 +155,9 @@ class ImageBox
 class TextBox
 {
 
-    var $name ="name";
-    var $id = "id"; 
-    var $type ="type";
+    var $name ="";
+    var $id   = ""; 
+    var $type ="";
 	
     public function __construct($n,$i) 
     { 
@@ -152,7 +169,11 @@ class TextBox
     {
 	if(isset($_POST['save']))
 		{ 
-		  update_option("bbo_text_".$this->id,$_POST[$this->id]);
+                  if(isset($_POST[$this->id])){
+		  	update_option("bbo_text_".$this->id,$_POST[$this->id]);
+                  }else{
+			update_option("bbo_text_".$this->id,"");
+		  }
 		}
     ?>
    <div class="line">
@@ -166,3 +187,13 @@ class TextBox
 
 
 ?>
+<script type="text/javascript">
+jQuery(".simple-fields-metabox-field-file-clear").live("click", function() {
+		var jQueryli = jQuery(this).closest(".simple-fields-metabox-field-file");
+		jQueryli.find(".simple-fields-metabox-field-file-fileID").val("");
+		jQueryli.find(".simple-fields-metabox-field-file-selected-image").text("");
+		jQueryli.find(".simple-fields-metabox-field-file-selected-image-name").text("");
+		return false;
+});
+</script>
+	

@@ -68,7 +68,15 @@ function bbo_add_dashboard_widgets() {
 
 function bbo_dashboard_widget_function() {
 	//Display whatever it is you want to show
-	echo "Hello World, I'm a great Dashboard Widget";
+        ?> 
+        <div class="bbo_widget_wrapper">
+		<div class="left"><div class="bbo-img"></div> </div>
+		Här kan du välja att se statestik från kundcentret!		
+		</div>
+         <div style="clear:both;"></div>
+	</div>
+        <?php
+	
 } 
 
 ?>
