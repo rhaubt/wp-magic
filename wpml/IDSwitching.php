@@ -1,0 +1,1 @@
+<?php echo get_permalink(icl_object_id(20, 'page')); ?>
