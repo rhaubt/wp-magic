@@ -1,8 +1,47 @@
 <?
+$loadDataPoints = true;
 include("config.php");
 #Kunder
 include("header.php");
 ?>
+<style type="text/css">
+    .ui-widget-header {
+border: 1px solid #AAA;
+background: #CCC url(images/ui-bg_highlight-soft_75_cccccc_1x100.png) 50% 50% repeat-x;
+color: #222;
+font-weight: bold;
+}
+
+.ui-tabs .ui-tabs-nav li {
+position: relative;
+float: left;
+border-bottom-width: 0 !important;
+margin: 0 .2em -1px 0;
+padding: 0;
+}
+
+.ui-state-default, .ui-widget-content .ui-state-default, .ui-widget-header .ui-state-default {
+border: 1px solid lightGrey;
+background: #E6E6E6 url(images/ui-bg_glass_75_e6e6e6_1x400.png) 50% 50% repeat-x;
+font-weight: normal;
+color: #555;
+
+}
+
+.ui-state-active a, .ui-state-active a:link, .ui-state-active a:visited {
+color: #212121;
+text-decoration: none;
+}
+.ui-state-active a, .ui-state-active a:link, .ui-state-active a:visited {
+color: #212121;
+text-decoration: none;
+}
+.ui-state-default a, .ui-state-default a:link, .ui-state-default a:visited {
+color: #555;
+text-decoration: none;
+}
+
+</style>
 <div class="mainContainer">
 <div class="mainbox taskList">
 <h2><?=$pageTitle?></h2>
@@ -13,7 +52,7 @@ if(isset($_REQUEST['smille']) || true){
 global $users;
 // Handel the date interval
 $todayDate = date('Y-m-d');
-$dateOneMonthSubtracted = date("Y-m-d", strtotime($todayDate. "-1 month"));
+$dateOneMonthSubtracted = date("Y-m-d", strtotime($todayDate. "-3 month"));
 $sellers = getSellerList();
 $sellers[00] ="Samtliga";
 
@@ -32,7 +71,13 @@ $sellers[00] ="Samtliga";
     $singleUid = false;
     if(isset($_GET['uid']) && is_numeric($_GET['uid'])){
 		$singleUid = $_GET['uid'];
+            $temp = $sellers;
+            $sellers = array();
+            $sellers[$singleUid] = $temp[$singleUid];
 	}
+
+  $phpTimeUnit ="YW";
+  $mysqlTimeUnit = "%Y%v";
 
 ?>
 <div class="date_header">
@@ -200,8 +245,12 @@ $sellers[00] ="Samtliga";
     ?>
     </div>
 </div>
-
+<?php 
+//Dölj från singel vyn
+if($singleUid < 1){ 
+?>
 <?php
+
    /*
     MÄNGD REPETERANDE AVTAL KR
      */
@@ -222,7 +271,7 @@ $sellers[00] ="Samtliga";
     ?>
 
     <?php 
-    generateChart('chart5',$userArray,null,null,'Repeterande Avtal KR', false,'generateUnitSeries');
+    generateChart('chart5',$userArray,null,null,'Repeterande Avtal KR / Månad', false,'generateUnitSeries');
     ?>
 
 <?php
@@ -237,7 +286,6 @@ $sellers[00] ="Samtliga";
     $types[00]= "Samtliga";
     foreach ($types as $uid => $value)
     {
-        echo $uid;
        $userData =   getRepetingsAgreementDataByUser($uid,$startDate,$endDate,true);
        if($userData != null)
         $userArray[$uid] = $userData;
@@ -246,9 +294,129 @@ $sellers[00] ="Samtliga";
     ksort($userArray);
     ?>
         <?php 
-    generateChart('chart5v2',$userArray,null,null,'Repeterande Avtal i timmar', false,'generateUnitSeries');
+    generateChart('chart5v2',$userArray,null,null,'Repeterande Avtal i timmar / Månad', false,'generateUnitSeries');
     ?>
+
+
+
+    <?php
+   /*
+    FÖRTJÄNST I KR PER AFFÄRSOMRÅDE
+    */
+    $start = date("YW",strtotime($startDate));
+    $end   = date("YW",strtotime($endDate));
+    $filter = "AND timeUnit >= '{$start}' AND timeUnit <= '{$end}' ";
+    $userArray = array();
+    $types = getAgreementTypeList();
+    $types[00]= "Samtliga";
+    foreach ($types as $uid => $value)
+    {
+       $userData = getAgreementDataByUnit($uid,$filter);
+       if($userData != null)
+        $userArray[$uid] = $userData;
+    }
+
+    ksort($userArray);
+    ?>
+
+<div id="tabs6">
+    <ul>
+        <li><a href="#tabs6-1">Avtal i kr</a></li>
+        <li><a href="#tabs6-2">Antal i kr medel</a></li>
+    </ul>
+    <div id="tabs6-1">
+    <?php 
+    generateChart('chart6',$userArray,null,null,'Förtjänst per affärsområde', false,'generateUnitSeries');
+    ?>
+    </div>
+    <div id="tabs6-2">
+    <?php 
+    /*
+     MEDEL FÖRTJÄNST I KR PER AFFÄRSOMRÅDE
+     */
+    generateChart('chart6v2',$userArray,null,null,'Medelförtjänst per affärsområde', true,'generateUnitSeries');
+    ?>
+    </div>
+</div> 
+
+   <?php
+   /*
+    SPENDING I KR PER AFFÄRSOMRÅDE
+    */
+    $start = date("YW",strtotime($startDate));
+    $end   = date("YW",strtotime($endDate));
+    $filter = "AND timeUnit >= '{$start}' AND timeUnit <= '{$end}' ";
+    $userArray = array();
+    $types = getAgreementTypeList();
+    $types[00]= "Samtliga";
+    foreach ($types as $uid => $value)
+    {
+       $userData = getAgreementSpendingDataByUnit($uid,$filter);
+       if($userData != null)
+        $userArray[$uid] = $userData;
+    }
+
+    ksort($userArray);
+    ?>
+
+<div id="tabs7">
+    <ul>
+        <li><a href="#tabs7-1">Spening i kr</a></li>
+        <li><a href="#tabs7-2">Spedning i kr medel</a></li>
+    </ul>
+    <div id="tabs7-1">
+    <?php 
+    generateChart('chart7',$userArray,null,null,'Spending per affärsområde', false,'generateUnitSeries');
+    ?>
+    </div>
+    <div id="tabs7-2">
+    <?php 
+    /*
+     MEDEL FÖRTJÄNST I KR PER AFFÄRSOMRÅDE
+     */
+    generateChart('chart7v2',$userArray,null,null,'Spenidng per affärsområde', true,'generateUnitSeries');
+    ?>
+    </div>
+</div>
   
+  <?php } //Slut på dölj från singel vy ?>
+
+  <?php if($singleUid > 0){
+
+    $start = date("YW",strtotime($startDate));
+    $end   = date("YW",strtotime($endDate));
+    $sql = "SELECT DATE_FORMAT(DATE,'%Y%v') AS dates, DATE_FORMAT(DATE,'%Y-%v') AS dateKey FROM helperDates WHERE DATE >= '{$startDate}' AND DATE <= '{$endDate}' GROUP BY dates";
+    $result = mysql_query($sql);
+    while ($row = mysql_fetch_array($result)) {
+
+     $date = $row['dates'];
+     $key = $row['dateKey'];
+     $sql  = "SELECT COUNT(*) AS avslutade FROM (SELECT *, DATE_FORMAT(finishDate,'%Y%v') AS timeUnit FROM tasks WHERE taskType = 5 AND fromUserId = {$singleUid}) AS bokade WHERE timeUnit = '{$date}'";
+     $sql2 = "SELECT COUNT(*) AS bokade FROM (SELECT *, DATE_FORMAT(creationDate,'%Y%v') AS timeUnit FROM tasks WHERE taskType = 5 AND toUserId = {$singleUid}) AS bokade WHERE timeUnit = '{$date}'";
+     $subResult = mysql_query($sql);
+
+     $subResult2 = mysql_query($sql2);
+     $avslutade = mysql_fetch_array($subResult);
+     $bokade = mysql_fetch_array($subResult2);
+
+
+     $bokade     = $bokade['bokade'];
+     $avslutade =  $avslutade['avslutade'];
+
+     
+     $sql = "SELECT * FROM goals_sellers WHERE userid = {$singleUid} AND DATE = '{$key}'";
+     $subResult = mysql_query($sql);
+     $goals = mysql_fetch_array($subResult);
+     $skaBoka = max((int)$goals['boka'],0);
+     $skaAvsluta = max((int)$goals['avsluta'],0);
+     $keys[] = $key;
+     $bokatArray[]   = array("goal" => $skaBoka, "actions"=> $bokade);
+     $avslutaArray[] = array("goal" => $skaAvsluta, "actions"=> $avslutade);        
+    }
+       generateBarChart('chart8',$bokatArray,'Veckomål Bokningar',$keys);
+       generateBarChart('chart9',$avslutaArray,'Veckomål Avslut',$keys);
+     
+    } ?>
 
 <!-- Wee use this to geerate all the tabs after we load the dockument -->
 
@@ -259,6 +427,8 @@ $sellers[00] ="Samtliga";
               $("#tabs2").tabs();
               $("#tabs3").tabs();
               $("#tabs4").tabs();
+              $("#tabs6").tabs();
+              $("#tabs7").tabs();
         }, '200');       
     });
 </script>

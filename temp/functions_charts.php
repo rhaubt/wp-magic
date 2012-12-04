@@ -1,5 +1,72 @@
 <?php
 
+function generateBarChart($id, $goal,$name, $ticks){
+
+	foreach ($goal as $value) {
+		$s1[] = $value['goal'];
+		$s2[] = $value['actions'];
+		# code...
+	}
+	$s1 = implode(',', $s1);
+	$s2 = implode(',', $s2);
+	$ticks = implode("','", $ticks);
+
+?>
+<script type="text/javascript">
+	$(document).ready(function(){
+  var s1 = [<?php echo $s1; ?>];
+  var s2 = [<?php echo $s2; ?>];
+  var ticks = ['<?php echo $ticks; ?>'];
+
+  plot3 = $.jqplot('<?php echo $id; ?>', [s1, s2], {
+    // Tell the plot to stack the bars.
+    stackSeries: true,
+    captureRightClick: true,
+    seriesDefaults:{
+      renderer:$.jqplot.BarRenderer,
+      rendererOptions: {
+          // Put a 30 pixel margin between bars.
+          barMargin: 30,
+          // Highlight bars when mouse button pressed.
+          // Disables default highlighting on mouse over.
+      },
+      pointLabels: {show: true}
+    },
+     series:[
+            {label:'Mål'},
+            {label:'Resultat'},
+        ],
+    axes: {
+      xaxis: {
+          renderer: $.jqplot.CategoryAxisRenderer,
+          ticks: ticks
+      },
+      yaxis: {
+        // Don't pad out the bottom of the data range.  By default,
+        // axes scaled as if data extended 10% above and below the
+        // actual range to prevent data points right on grid boundaries.
+        // Don't want to do that here.
+        padMin: 0
+      }
+    },
+    legend: {
+      show: true,
+      location: 'e',
+      placement: 'outside'
+    },  
+     highlighter: {
+        show: false
+      },    
+  });
+
+
+});
+</script>
+<h3><?php echo $name; ?></h3>
+ <div id="<?php echo $id; ?>"></div>
+<?php
+}
+
 function generateChart($id,$dataArray,$yaxis,$xaxis,$caption = "ChartName", $mean = false, $generateSeries = 'generateUserSeries')
 {
 if(!is_array($dataArray)){ return; } //Hotfix to remove array errors, need to cleeen ths by declaring Array
@@ -71,6 +138,10 @@ global $base_url, $users, $user;
             },
 		}
 	},
+	seriesDefaults:{
+      pointLabels: {show: false}
+    },
+
 		
 		series:[
 		<?php
@@ -81,16 +152,18 @@ global $base_url, $users, $user;
 		
 		],
 
+
 	 	highlighter: {sizeAdjust: 7.5, tooltipAxes: 'y'},
         cursor: {show: false},
-        legend: { show:true, location: 'e'}
+        legend: { show:true, location: 'e',
+      placement: 'outside'}
     });
  
 
  jQuery("#<?php echo $id; ?> .jqplot-table-legend").css('right','-120px'); 
   });
 
-</script>
+</script> 
 <h3><?php echo $caption; ?></h3>
 <div id="<?php echo $id; ?>" style="height:400px; width:700px;"></div>
 
@@ -110,7 +183,7 @@ function getAgreementDataByUser($userId = 0,$filter ='')
 	"SELECT * FROM (SELECT userId,timeUnit, orderValue, @SUM := @SUM + orderValue AS SUM, @COUNT := @COUNT + 1 AS COUNT, @AVG := @SUM / @COUNT AS AVG
 	FROM (
 		 SELECT calender.timeUnit, IFNULL(orderValue, 0) AS orderValue, IFNULL(QUERY.userId,{$userId}) AS userId FROM(
-		 (SELECT userId, acceptDate,  DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit, SUM(orderValue) as orderValue FROM agreements WHERE userId = {$userId} {$userIdFilter} GROUP BY timeUnit ORDER BY timeUnit) AS QUERY 
+		 (SELECT userId, acceptDate,  DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit, SUM(IF(invoiceFrequency = 'monthly', (price - spending) * agreementLengthMonths ,(price - spending))) as orderValue FROM agreements WHERE userId = {$userId} {$userIdFilter} GROUP BY timeUnit ORDER BY timeUnit) AS QUERY 
 		 RIGHT JOIN (SELECT DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit FROM `agreements` WHERE acceptDate > 2000-00-00 GROUP BY timeUnit) AS calender ON (calender.timeUnit = DATE_FORMAT(QUERY.`acceptDate`, '%Y%v')) 
 		)
 	      )
@@ -152,8 +225,8 @@ function getRepetingsAgreementDataByUser($typeId = 0,$startDate,$endDate,$timmar
 		$date2 = date('Y-m',strtotime("+1 month",strtotime($row['timeUnit'])));
 
 		//$userData[$row['timeUnit']]
-		$sql = "SELECT agreementTypeId, agreements_available.name , SUM(price) AS total, SUM(hours) as hours FROM agreements LEFT JOIN agreements_available ON agreements_available.id = agreementTypeId  WHERE agreements.invoiceFrequency = 'monthly' AND startDate <= '{$date2}' AND endDate > '{$date2}' AND (agreementTypeId = {$typeId} {$typeIdFilter})";
-
+		$sql = "SELECT agreementTypeId, agreements_available.name , SUM(price - spending) AS total, SUM(hours) as hours FROM agreements LEFT JOIN agreements_available ON agreements_available.id = agreementTypeId  WHERE agreements.invoiceFrequency = 'monthly' AND startDate <= '{$date2}' AND (endDate > '{$date2}' OR endDate = '0000-00-00 00:00:00') AND (agreementTypeId = {$typeId} {$typeIdFilter})";
+		//echo $sql;
 	    $result2 = mysql_query($sql);
 	    $data = mysql_fetch_array($result2);
 	    if($timmar){
@@ -197,6 +270,77 @@ function getAgreementDataCountByUser($userId = 0,$filter ='')
 	{
 		$userData[$row['timeUnit']] = array('value' => $row['antal'],'mean' => round($row['avg']));
 		$total += (int)$row['antal'];
+	}
+ //Check to se of we want to display user in stats (Only if sales > 0)
+	if($total < 1)
+		return null;
+ 	
+ 	return $userData;
+}
+
+
+function getAgreementDataByUnit($unitId = 0,$filter ='')
+{
+
+	//Making this a bit more versitile by enabeling user merge
+	if($unitId == '0')
+	{
+		$unitIdFilter = "OR agreementTypeId > 0";
+	}
+
+	$sql = 
+	"SELECT * FROM (SELECT agreementTypeId,timeUnit, orderValue, @SUM := @SUM + orderValue AS SUM, @COUNT := @COUNT + 1 AS COUNT, @AVG := @SUM / @COUNT AS AVG
+	FROM (
+		 SELECT calender.timeUnit, IFNULL(orderValue, 0) AS orderValue, IFNULL(QUERY.agreementTypeId,{$unitId}) AS agreementTypeId FROM(
+		 (SELECT agreementTypeId , acceptDate,  DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit, SUM(orderValue) AS orderValue FROM agreements WHERE agreementTypeId = {$unitId} {$unitIdFilter} GROUP BY timeUnit ORDER BY timeUnit) AS QUERY 
+		 RIGHT JOIN (SELECT DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit FROM `agreements` WHERE acceptDate > 2000-00-00 GROUP BY timeUnit) AS calender ON (calender.timeUnit = DATE_FORMAT(QUERY.`acceptDate`, '%Y%v')) 
+		)
+	      )
+	AS FIRST, (SELECT @COUNT := 0, @SUM := 0,@AVG :=0) AS extra ) AS filter
+	WHERE 1   {$filter}";
+
+	$result = mysql_query($sql);
+	$total = 0;
+	while ($row = mysql_fetch_array($result))
+	{
+
+		$userData[$row['timeUnit']] = array('value' => $row['orderValue'],'mean' => round($row['AVG']));
+		$total += (int)$row['orderValue'];
+	}
+ //Check to se of we want to display user in stats (Only if sales > 0)
+	if($total < 1)
+		return null;
+ 	
+ 	return $userData;
+}
+
+function getAgreementSpendingDataByUnit($unitId = 0,$filter ='')
+{
+
+	//Making this a bit more versitile by enabeling user merge
+	if($unitId == '0')
+	{
+		$unitIdFilter = "OR agreementTypeId > 0";
+	}
+
+	$sql = 
+	"SELECT * FROM (SELECT agreementTypeId,timeUnit, spending, @SUM := @SUM + spending AS SUM, @COUNT := @COUNT + 1 AS COUNT, @AVG := @SUM / @COUNT AS AVG
+	FROM (
+		 SELECT calender.timeUnit, IFNULL(spending, 0) AS spending, IFNULL(QUERY.agreementTypeId,{$unitId}) AS agreementTypeId FROM(
+		 (SELECT agreementTypeId , acceptDate,  DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit, SUM(spending) AS spending FROM agreements WHERE agreementTypeId = {$unitId} {$unitIdFilter} GROUP BY timeUnit ORDER BY timeUnit) AS QUERY 
+		 RIGHT JOIN (SELECT DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit FROM `agreements` WHERE acceptDate > 2000-00-00 GROUP BY timeUnit) AS calender ON (calender.timeUnit = DATE_FORMAT(QUERY.`acceptDate`, '%Y%v')) 
+		)
+	      )
+	AS FIRST, (SELECT @COUNT := 0, @SUM := 0,@AVG :=0) AS extra ) AS filter
+	WHERE 1   {$filter}";
+
+	$result = mysql_query($sql);
+	$total = 0;
+	while ($row = mysql_fetch_array($result))
+	{
+
+		$userData[$row['timeUnit']] = array('value' => $row['spending'],'mean' => round($row['AVG']));
+		$total += (int)$row['spending'];
 	}
  //Check to se of we want to display user in stats (Only if sales > 0)
 	if($total < 1)
