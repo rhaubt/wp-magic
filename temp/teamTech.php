@@ -38,7 +38,7 @@ box-align:center;}
 <h2><?=$pageTitle?></h2>
 <?php
 
-if(isset($_REQUEST['smille'])){
+
 
 global $users;
 // Handel the date interval
@@ -93,27 +93,49 @@ if($singleUid)
     DATE_ADD(DATE_FORMAT(insDate,'%Y-%m-%d'), INTERVAL ROUND(hours / 8) DAY) AS enddate,
     (SELECT DATE FROM helperDates WHERE DATE >= DATE_ADD(DATE_FORMAT(insDate,'%Y-%m-%d'), INTERVAL ROUND(hours / 8) DAY) AND isweekday = TRUE AND delegatedToTask = 0 LIMIT 1) AS realEndDay
     FROM tasks WHERE repeatingMonthly = 'no' AND finishDate ='0000-00-00 00:00:00') EXTENDED WHERE toUserId = {$singleUid} AND  realEndDay >= {$startDate} ";
-  echo $sql ;
+
     $retults = mysql_query($sql);
     $weeksWorke = array();
     while ($row = mysql_fetch_array($retults))
     {
-        // if($row['generatedByRepeatingTask'] > 0)
-        //     continue;
-        
-        $sql = "SELECT * from helperDates WHERE date >= '{$row['startDate']}' AND date <= '{$row['realEndDay']}' AND isweekday = TRUE";
-        $results2 = mysql_query($sql);
-        //echo $sql;
-        $totalHouers = $row['hours'];
-        while ($row2 = mysql_fetch_array($results2))
+        if($row['generatedByRepeatingTask'] < 1)
         {
-            $weeksWorke[$row2['wk']][$row2['date']]['hours'] += min(8,(int)$totalHouers);
-            if($totalHouers >= 8)
-                $totalHouers  = $totalHouers - 8;
+            $sql = "SELECT * from helperDates WHERE date >= '{$row['startDate']}' AND date <= '{$row['realEndDay']}' AND isweekday = TRUE";
+            $results2 = mysql_query($sql);
+            //echo $sql;
+            $totalHouers = $row['hours'];
+            $dayHouers = $totalHouers;
+
+            $numberOfDays = mysql_num_rows($results2);
+            while ($row2 = mysql_fetch_array($results2))
+            {
+                $toDayHouers = max(0,$totalHouers);
+                $weeksWorke[$row2['wk']][$row2['date']]['hours'] += min(8,$toDayHouers); 
+                $totalHouers = $totalHouers - 8;
+                
+            }
+        }else{
+
+            $sql = "SELECT * from helperDates WHERE date >= '{$row['startDate']}' AND date <= '{$row['deadline']}' AND isweekday = TRUE";
+            $results2 = mysql_query($sql);
+
+            //echo $sql;
+            $totalHouers = $row['hours'];
+            $numberOfDays = mysql_num_rows($results2);
+            $houersPerDay = @($totalHouers / $numberOfDays);
+            while ($row2 = mysql_fetch_array($results2))
+            {
+                $weeksWorke[$row2['wk']][$row2['date']]['hours'] += $houersPerDay;
+            }
+
+
+
         }
 
     }
-}
+    echo $tt;
+
+
 ?>
 
 <div id="weekwrapper">
@@ -134,7 +156,7 @@ foreach ($weeks as $week => $days) {
     <?php 
         foreach ($days as $day) {
             ?>
-            <div class="day"><?php echo $day['name'] ?>
+            <div class="day"><?php echo $day['name'] ?> - <?php echo $day['date'];  ?>
                <?php 
                $color = "#90d970";
                $fullday = max(1,$day['hours']) / 8;
@@ -161,8 +183,8 @@ foreach ($weeks as $week => $days) {
                 }
                 ?>
                 <div class="day-total">
-                <p class="procent"><?php echo $betastning; ?> %</p>
-                <p class="hours"><?php echo $day['hours']; ?> Timmar</p>
+                <p class="procent"><?php echo round($betastning); ?> %</p>
+                <p class="hours"><?php echo round($day['hours'],0); ?> Timmar</p>
                 </div>
              
 
@@ -177,6 +199,11 @@ foreach ($weeks as $week => $days) {
 ?>
 </div>
 <?php
+}//end is singen user
+?>
+<?php
+
+if(isset($_REQUEST['smille'])){
 
 // SELECT taskType, title, toUserId, repeatingMonthly,startDate, hours, days,enddate,realEndDay,deadline FROM (
 // SELECT *, DATE_FORMAT(creationDate,"%Y-%m-%d") AS startDate, ROUND(hours / 8) AS days, 
