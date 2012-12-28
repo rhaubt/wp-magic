@@ -20,7 +20,7 @@ function generateBarChart($id, $goal,$name, $ticks){
 
   plot3 = $.jqplot('<?php echo $id; ?>', [s1, s2], {
     // Tell the plot to stack the bars.
-    stackSeries: true,
+    stackSeries: false,
     captureRightClick: true,
     seriesDefaults:{
       renderer:$.jqplot.BarRenderer,
@@ -170,6 +170,9 @@ global $base_url, $users, $user;
 <?php
 }
 
+
+
+
 function getAgreementDataByUser($userId = 0,$filter ='')
 {
 
@@ -204,15 +207,15 @@ function getAgreementDataByUser($userId = 0,$filter ='')
  	
  	return $userData;
 }
-function getRepetingsAgreementDataByUser($typeId = 0,$startDate,$endDate,$timmar = false)
+function getRepeatingAgreementDataByUnit($typeId = 0,$startDate,$endDate,$timmar = false)
 {
 		//Making this a bit more versitile by enabeling user merge
 	if($typeId == '0')
 	{
-		$typeIdFilter = "OR userId > 0";
+		$typeIdFilter = "OR agreementTypeId > 0";
 	}
 
- 	 $startDate  =   date('Y-m-d',strtotime("-6 month",strtotime($startDate)));
+ 	 $startDate  =   date('Y-m-d',strtotime("-1 month",strtotime($startDate)));
 	//Generate timeUnit Range
 	
 	$sql = "SELECT DATE_FORMAT(DATE,'%Y-%m-01') AS timeUnit FROM helperDates WHERE  DATE >= '{$startDate}' AND DATE <= '{$endDate}' GROUP BY timeUnit";
@@ -222,10 +225,13 @@ function getRepetingsAgreementDataByUser($typeId = 0,$startDate,$endDate,$timmar
 	while ($row = mysql_fetch_array($result)) {
 		$key   = date('Ym',strtotime($row['timeUnit']));
 		$date1 = $row['timeUnit'];
-		$date2 = date('Y-m',strtotime("+1 month",strtotime($row['timeUnit'])));
+		//$date2 = date('Y-m',strtotime("+1 month",strtotime($row['timeUnit'])));
 
 		//$userData[$row['timeUnit']]
-		$sql = "SELECT agreementTypeId, agreements_available.name , SUM(price - spending) AS total, SUM(hours) as hours FROM agreements LEFT JOIN agreements_available ON agreements_available.id = agreementTypeId  WHERE agreements.invoiceFrequency = 'monthly' AND startDate <= '{$date2}' AND (endDate > '{$date2}' OR endDate = '0000-00-00 00:00:00') AND (agreementTypeId = {$typeId} {$typeIdFilter})";
+		$sql = "SELECT agreementTypeId, SUM(price - spending) AS total, SUM(hours) AS hours FROM agreements LEFT JOIN customers ON customers.id = agreements.customerId WHERE 
+(acceptDate != '0000-00-00 00:00:00' AND startDate <= '{$date1}' AND (endDate > DATE_ADD('{$date1}', INTERVAL 1 MONTH) OR endDate = '0000-00-00 00:00:00')
+AND invoiceFrequency = 'monthly' AND agreementLengthMonths > 0) AND (agreementTypeId = {$typeId} {$typeIdFilter})";
+		//$sql = "SELECT agreementTypeId, agreements_available.name , SUM(price) AS total, SUM(hours) as hours FROM agreements LEFT JOIN agreements_available ON agreements_available.id = agreementTypeId  WHERE agreements.invoiceFrequency = 'monthly' AND  agreements.agreementLengthMonths > 0 AND acceptDate != '0000-00-00 00:00:00' AND startDate <= '{$date2}' AND (endDate > '{$date2}' OR endDate = '0000-00-00 00:00:00') AND (agreementTypeId = {$typeId} {$typeIdFilter})";
 		//echo $sql;
 	    $result2 = mysql_query($sql);
 	    $data = mysql_fetch_array($result2);
@@ -292,13 +298,12 @@ function getAgreementDataByUnit($unitId = 0,$filter ='')
 	"SELECT * FROM (SELECT agreementTypeId,timeUnit, orderValue, @SUM := @SUM + orderValue AS SUM, @COUNT := @COUNT + 1 AS COUNT, @AVG := @SUM / @COUNT AS AVG
 	FROM (
 		 SELECT calender.timeUnit, IFNULL(orderValue, 0) AS orderValue, IFNULL(QUERY.agreementTypeId,{$unitId}) AS agreementTypeId FROM(
-		 (SELECT agreementTypeId , acceptDate,  DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit, SUM(orderValue) AS orderValue FROM agreements WHERE agreementTypeId = {$unitId} {$unitIdFilter} GROUP BY timeUnit ORDER BY timeUnit) AS QUERY 
+		 (SELECT agreementTypeId , acceptDate,  DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit, SUM(IF(invoiceFrequency = 'monthly', (price - spending) * agreementLengthMonths ,(price - spending))) AS orderValue FROM agreements WHERE agreementTypeId = {$unitId} {$unitIdFilter} GROUP BY timeUnit ORDER BY timeUnit) AS QUERY 
 		 RIGHT JOIN (SELECT DATE_FORMAT(`acceptDate`, '%Y%v') AS timeUnit FROM `agreements` WHERE acceptDate > 2000-00-00 GROUP BY timeUnit) AS calender ON (calender.timeUnit = DATE_FORMAT(QUERY.`acceptDate`, '%Y%v')) 
 		)
 	      )
 	AS FIRST, (SELECT @COUNT := 0, @SUM := 0,@AVG :=0) AS extra ) AS filter
 	WHERE 1   {$filter}";
-
 	$result = mysql_query($sql);
 	$total = 0;
 	while ($row = mysql_fetch_array($result))
@@ -385,6 +390,9 @@ function generateUserSeries($barArray)
 			global $users;
 			foreach ($barArray as $key => $value) {
 			$users[00] = "Samtliga";
+			$users['mean'] = "Medel";
+			//echo "error";
+			//print_r($barArray);
 			?>
 			{
 			label:'<?php echo $users[$key]; ?>', 
@@ -401,7 +409,6 @@ function generateUnitSeries($barArray)
 	  		{
 	  			$units[$row['id']]= $row['name'];
 	  		}
-
 			foreach ($barArray as $key => $value) {
 			$units[00] = "Samtliga";
 			?>
@@ -423,6 +430,7 @@ function generateTaskSeries($barArray)
 
 			foreach ($barArray as $key => $value) {
 			$units[00] = "Samtliga";
+
 			?>
 			{
 			label:'<?php echo $units[$key]; ?>', 
@@ -448,10 +456,16 @@ function dateRange( $first, $last,$step = '+1 week', $format = 'Y-m-d' ) {
 	return $dates;
 }
 
-function getSellerList()
+function getSellerList($type  = false)
 {
 	$list   = array();
 	$query  = "SELECT * FROM `users` WHERE rights = 'inhouse' OR rights = 'admin'";
+
+	if($type != false)
+	{
+	$query  = "SELECT * FROM `users` WHERE (rights = 'inhouse' OR rights = 'admin') and {$type} = 'yes'";
+	}
+
 	$result = mysql_query($query);
 	$res 	= mysql_fetch_array($result);
 	while ($row = mysql_fetch_array($result, MYSQL_ASSOC))
@@ -509,332 +523,226 @@ function getDateRange(){
 
 }
 
+
 /*
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
+
+
+
+Teknik charts
+
+
  */
 
-function getSellerTelefon($fromDate,$toDate,$uid = false,$format="Y-W")
-{
-	$userStats = array();
-	$sql = "SELECT toUserId as userId, finishDate as 'tUnit', finishDate FROM tasks WHERE taskType = '6' AND finishDate >= '".$fromDate."' AND finishDate <= '".$toDate." 23:59:59' AND delegatedToTask = 0  ORDER BY tUnit";
-	$result    = mysql_query($sql);
-	$range = dateRange($fromDate,$toDate);
-	if (mysql_num_rows($result)) {
-	  while($row = mysql_fetch_array($result))
-	  {
-	  	foreach ($range[$format] as $key => $value) {
-	  		$timeUnit = date($format,strtotime($row['tUnit']));
-	  		if($timeUnit == $key){
-	  			$dateRows[$key][$row["userId"]]['antal'] += 1;
-	  			$dateRows[$key][00]['antal'] += 1;
-	  		}else{
-	  			$dateRows[$key][$row["userId"]]['antal'] += 0;
-	  		}
-	  	}
-	  }
+
+
+function generateShedualBarChart($id, $goal,$name, $ticks){
+    $goal   = array();
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '56', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+	$goal[] = array("teknik" => '80', "lank"=> '20', "seo"=> '55'); 
+    $ticks = array();
+    $ticks[] = 41;
+    $ticks[] = 42;
+    $ticks[] = 43;
+    $ticks[] = 44;
+    $ticks[] = 45;
+    $ticks[] = 46;
+	foreach ($goal as $value) {
+		$s1[] = $value['teknik'];
+		$s2[] = $value['lank'];
+		$s3[] = $value['seo'];
+		# code...
 	}
+	$s1 = implode(',', $s1);
+	$s2 = implode(',', $s2);
+	$s3 = implode(',', $s3);
+	$ticks = implode("','", $ticks);
 
-    //Restor data into user arrays
-	foreach ($dateRows as $key => $dateRow) {
-		foreach ($dateRows[$key] as $userid => $antal)
-		{
-			$userStats[$userid][$key] = $antal;
+?>
+<script type="text/javascript">
+	$(document).ready(function(){
+  var s1 = [<?php echo $s1; ?>];
+  var s2 = [<?php echo $s2; ?>];
+  var s3 = [<?php echo $s3; ?>];
+  var ticks = ['<?php echo $ticks; ?>'];
 
-		}
-	}
-
-//Single put one user
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-   ksort($userStats);
-   return $userStats;
-}
-
-function getSellerMoten($fromDate,$toDate,$uid = false,$format ="Y-W")
-{
-	$sql = "SELECT toUserId as userId, finishDate as 'tUnit', finishDate FROM tasks WHERE taskType = '5' AND finishDate >= '".$fromDate."' AND finishDate <= '".$toDate." 23:59:59' AND delegatedToTask = 0  ORDER BY tUnit";
-	$result    = mysql_query($sql);
-	$range = dateRange($fromDate,$toDate);
-	if (mysql_num_rows($result)) {
-	  while($row = mysql_fetch_array($result))
-	  {
-	  	foreach ($range[$format] as $key => $value) {
-	  		$timeUnit = date($format,strtotime($row['tUnit']));
-	  		if($timeUnit == $key){
-	  			$dateRows[$key][$row["userId"]]['antal'] += 1;
-	  			$dateRows[$key][00]['antal'] += 1;
-	  		}else{
-	  			$dateRows[$key][$row["userId"]]['antal'] += 0;
-	  		}
-	  	}
-	  }
-	}
-
-    //Restor data into user arrays
-	foreach ($dateRows as $key => $dateRow) {
-		foreach ($dateRows[$key] as $userid => $antal)
-		{
-			$userStats[$userid][$key] = $antal;
-
-		}
-	}
-
-//Single put one user
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-   ksort($userStats);
-   return $userStats;
-}
-
-function getSellerAvtal($fromDate,$toDate,$uid = false,$format ="Y-W"){
-	$sql = "SELECT userId, acceptDate, acceptDate as tUnit FROM `agreements` WHERE acceptDate >= '".$fromDate."' AND  acceptDate <= '".$toDate." 23:59:59' ORDER BY tUnit";
-	$result    = mysql_query($sql);
-	$range = dateRange($fromDate,$toDate);
-	if (mysql_num_rows($result)) {
-	  while($row = mysql_fetch_array($result))
-	  {
-	  	foreach ($range[$format] as $key => $value) {
-	  		$timeUnit = date($format,strtotime($row['tUnit']));
-	  		if($timeUnit == $key){
-	  			$dateRows[$key][$row["userId"]]['antal'] += 1;
-	  			$dateRows[$key][00]['antal'] += 1;
-	  		}else{
-	  			$dateRows[$key][$row["userId"]]['antal'] += 0;
-	  		}
-	  	}
-	  }
-	}
-
-    //Restor data into user arrays
-	foreach ($dateRows as $key => $dateRow) {
-		foreach ($dateRows[$key] as $userid => $antal)
-		{
-			$userStats[$userid][$key] = $antal;
-
-		}
-	}
-
-//Single put one user
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-   ksort($userStats);
-   return $userStats;
-}
-
-function getSellerAvtalSpending($fromDate,$toDate,$uid = false,$format ="Y-W"){
-	$sql = "SELECT userId,agreementTypeId, acceptDate,ordervalue,spending,invoiceFrequency, acceptDate as tUnit FROM `agreements` WHERE acceptDate >= '".$fromDate."' AND  acceptDate <= '".$toDate." 23:59:59' ORDER BY tUnit";
-	$result    = mysql_query($sql);
-	$range = dateRange($fromDate,$toDate);
-	if (mysql_num_rows($result)) {
-	  while($row = mysql_fetch_array($result))
-	  {
-	  	foreach ($range[$format] as $key => $value) {
-	  		$timeUnit = date($format,strtotime($row['tUnit']));
-	  		if($timeUnit == $key){
-	  			$dateRows[$key][$row["userId"]]['antal'] += 1;
-	  			$dateRows[$key][00]['antal'] += 1;
-	  		}else{
-	  			$dateRows[$key][$row["userId"]]['antal'] += 0;
-	  		}
-	  	}
-	  }
-	}
-
-    //Restor data into user arrays
-	foreach ($dateRows as $key => $dateRow) {
-		foreach ($dateRows[$key] as $userid => $antal)
-		{
-			$userStats[$userid][$key] = $antal;
-
-		}
-	}
-
-//Single put one user
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-   ksort($userStats);
-   return $userStats;
-}
-
-function getSellerAvtalSpendingTotal($fromDate,$toDate,$uid = false){
-	$sql = "SELECT userId, agreementTypeId, acceptDate, endDate, ordervalue, spending, invoiceFrequency FROM `agreements` WHERE acceptDate <= '".$toDate." 23:59:59'";
-	$result    = mysql_query($sql);
-
-	if (mysql_num_rows($result))
-	{
-	  while($row = mysql_fetch_array($result))
-	  {
-	  	if($row["invoiceFrequency"] ==""){
-
-	  	}
-	  	else if($row['acceptDate'] >= date('Y-m-d',strtotime($fromDate)) && $row['acceptDate'] <= date('Y-m-d',strtotime($toDate)) )
-	  	{
-		  	$userStats[$row["agreementTypeId"]][date('Ym',strtotime($row["acceptDate"]))]["action"]["antal"]+= (int)$row["spending"];
-			//$userStats[00][$row["week"]]["action"]["antal"]+= $row["spending"];
-	  	}
-	  }
-	}
+  plot3 = $.jqplot('<?php echo $id; ?>', [s1, s2, s3], {
+    // Tell the plot to stack the bars.
+    stackSeries: false,
+    captureRightClick: true,
+    seriesDefaults:{
+      renderer:$.jqplot.BarRenderer,
+      rendererOptions: {
+          // Put a 30 pixel margin between bars.
+          barMargin: 30,
+          // Highlight bars when mouse button pressed.
+          // Disables default highlighting on mouse over.
+      },
+      pointLabels: {show: true}
+    },
+     series:[
+            {label:'Teknik'},
+            {label:'Länkbygge'},
+            {label:'SEO'},
+        ],
+    axes: {
+      xaxis: {
+          renderer: $.jqplot.CategoryAxisRenderer,
+          ticks: ticks
+      },
+      yaxis: {
+      	  renderer: $.jqplot.CategoryAxisRenderer,
+        // Don't pad out the bottom of the data range.  By default,
+        // axes scaled as if data extended 10% above and below the
+        // actual range to prevent data points right on grid boundaries.
+        // Don't want to do that here.
+        padMin: 0
+      }
+    },
+    legend: {
+      show: true,
+      location: 'e',
+      placement: 'outside'
+    },  
+     highlighter: {
+        show: false
+      },    
+  });
 
 
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-	return $userStats;
+});
+</script>
+<h3><?php echo $name; ?></h3>
+ <div id="<?php echo $id; ?>"></div>
+<?php
 }
 
 
+function generateShedualhorizontalBarChart($id, $goal,$name, $ticks){
+    $goal   = array();
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+	$goal[] = array("teknik" => '[41,41]', "lank"=> '[80,41]', "seo"=> '[80,45]'); 
+    $ticks = array();
+    $ticks[] = 41;
+    $ticks[] = 42;
+    $ticks[] = 43;
+    $ticks[] = 44;
+    $ticks[] = 45;
+    $ticks[] = 46;
+	foreach ($goal as $value) {
+		$s1[] = $value['teknik'];
+		$s2[] = $value['lank'];
+		$s3[] = $value['seo'];
+		# code...
+	}
+	$s1 = implode(',', $s1);
+	$s2 = implode(',', $s2);
+	$s3 = implode(',', $s3);
+	$ticks = implode("','", $ticks);
 
-function getSellerAvtalMedel($fromDate,$toDate,$uid = false,$format ="Y-W"){
+?>
+<script type="text/javascript">
+	$(document).ready(function(){
+  var s1 = [<?php echo $s1; ?>];
+  var s2 = [<?php echo $s2; ?>];
+  var s3 = [<?php echo $s3; ?>];
+  var ticks = ['<?php echo $ticks; ?>'];
+
+  plot3 = $.jqplot('<?php echo $id; ?>', [s1, s2, s3], {
+    // Tell the plot to stack the bars.
+    stackSeries: false,
+    captureRightClick: true,
+    seriesDefaults:{
+      renderer:$.jqplot.BarRenderer,
+      rendererOptions: {
+      	  barDirection: 'horizontal',
+          // Put a 30 pixel margin between bars.
+          barMargin: 30,
+          // Highlight bars when mouse button pressed.
+          // Disables default highlighting on mouse over.
+      },
+      pointLabels: {show: true}
+    },
+     series:[
+            {label:'Teknik'},
+            {label:'Länkbygge'},
+            {label:'SEO'},
+        ],
+    axes: {
+      xaxis: {
+          renderer: $.jqplot.CategoryAxisRenderer,
+          padMin: 0
+      },
+      yaxis: {
+      	  renderer: $.jqplot.CategoryAxisRenderer,
+        // Don't pad out the bottom of the data range.  By default,
+        // axes scaled as if data extended 10% above and below the
+        // actual range to prevent data points right on grid boundaries.
+        // Don't want to do that here.
+        
+      }
+    },
+    legend: {
+      show: true,
+      location: 'e',
+      placement: 'outside'
+    },  
+     highlighter: {
+        show: false
+      },    
+  });
 
 
-	$sql       ="SELECT `acceptDate`,`userId`, DATE_FORMAT(`acceptDate`, '%Y%v') AS `month`, sum(`ordervalue`) AS `sum` FROM `agreements` WHERE userId > 0 AND `acceptDate`> 2001-01-01  AND  acceptDate <= '".$toDate." 23:59:59' GROUP BY `userId`, `month` ORDER BY acceptDate";
-    echo $sql;
-    $result    = mysql_query($sql);
-	$range = dateRange('2011-01-08',$toDate);
-	$numberOfUnits = 1;
-	if (mysql_num_rows($result)){
-	  while($row = mysql_fetch_array($result))
-	  {
-		  	// $users[$row['userId']]['sum']   += $row['sum'];
-		  	// $users[$row['userId']]['count'] +=1;
-		  	// $users[$row['userId']][$row['month']]['thisMonth'] = $row['sum'];
-		  	// $users[$row['userId']][$row['month']]['avrage']    = $users[$row['userId']]['sum'] / $users[$row['userId']]['count'];
+});
+</script>
+<h3><?php echo $name; ?></h3>
+ <div id="<?php echo $id; ?>"></div>
+<?php
+}
 
-		  	//Samtliga
-		  	$users['all']['sum']   += $row['sum'];
-		  	$users['all']['count'] ++;
-		  	$users['all'][$row['month']]['count']     = $users['all']['count'];
-		  	$users['all'][$row['month']]['thisMonth']+= $row['sum'];
-		  	$users['all'][$row['month']]['avrage']    = $users['all']['sum'] / $users['all']['count'];
-		  	print_r($users['all']);
-		  	exit();
-	  }
+function addMeanUser($userArray){
+
+	$meanUser = $userArray[0];
+	//Filter out the 0 user
+	$length = count($userArray) -1;
+	$newUserArray = array();
+	foreach ($meanUser as $timeUnit => $userData) {
+		$newUserArray[$timeUnit] = array('value' =>  $userData['value'] / $length,'mean' => round($userData['mean'] / $length));
 	}
 
-	print_r($users['all']);
-	exit();
-
-//Single put one user
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-   ksort($userStats);
-
-   return $userStats;
+	$userArray['mean'] = $newUserArray;
+	return $userArray;
 }
 
 
-function getSellerAvtalRepeating($fromDate,$toDate,$uid = false){
-	$sql = "SELECT userId,agreementTypeId, acceptDate,ordervalue,invoiceFrequency, WEEK(acceptDate) as week FROM `agreements` WHERE invoiceFrequency = 'monthly' AND acceptDate >= '".$fromDate."' AND  acceptDate <= '".$toDate." 23:59:59' ORDER BY week";
+function calkulateMeanPerWeek($userArray){
 
-	$result    = mysql_query($sql);
-	if (mysql_num_rows($result)){
-	  while($row = mysql_fetch_array($result))
-	  {
-		$userStats[$row["agreementTypeId"]][$row["week"]]["action"]["antal"]+= $row["ordervalue"];
-		$userStats[00][$row["week"]]["action"]["antal"]+= $row["ordervalue"];
-	  }
+	$length = count($userArray) -1;
+
+    $newUserArray = array();
+	foreach ($userArray[0] as $timeUnit => $userData) {
+		$newUserArray[$timeUnit] = array('value' =>  $userData['value'] / $length,'mean' => round($userData['mean'] / $length));
 	}
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-	return $userStats;
-}
-
-
-function getSellerTasksRepeatingHours($fromDate,$toDate,$uid = false){
-
-
-	$sql = "SELECT  taskType, WEEK(creationDate) as week, `hours` FROM `tasks` WHERE `hours` > 0 AND repeatingMonthly = 'YES' AND `creationDate` >= '".$fromDate."' AND `creationDate` <= '".$toDate." 23:59:59' ORDER BY week";
-	$result    = mysql_query($sql);
-	if (mysql_num_rows($result)){
-	  while($row = mysql_fetch_array($result))
-	  {
-		$userStats[$row["taskType"]][$row["week"]]["action"]["antal"]+= $row["hours"];
-		$userStats[00][$row["week"]]["action"]["antal"]+= $row["hours"];
-	  }
-	}
-	// if($uid){
-	// 	$temp = $userStats;
-	// 	unset($userStats);
-	// 	$userStats[$uid] = $temp[$uid];
-	// 	unset($temp);
-	// }
-	return $userStats;
-}
-
-function getSellerBokadeMoten($fromDate,$toDate,$uid = false,$format ="Y-W")
-{
-	$sql = "SELECT fromUserId as userId, creationDate as 'tUnit', finishDate FROM tasks WHERE taskType = '5' AND creationDate >= '".$fromDate."' AND creationDate <= '".$toDate." 23:59:59' ORDER BY tUnit";
-	$result    = mysql_query($sql);
-	$range = dateRange($fromDate,$toDate);
-	if (mysql_num_rows($result)) {
-	  while($row = mysql_fetch_array($result))
-	  {
-	  	foreach ($range[$format] as $key => $value) {
-	  		$timeUnit = date($format,strtotime($row['tUnit']));
-	  		if($timeUnit == $key){
-	  			$dateRows[$key][$row["userId"]]['antal'] += 1;
-	  			$dateRows[$key][00]['antal'] += 1;
-	  		}else{
-	  			$dateRows[$key][$row["userId"]]['antal'] += 0;
-	  		}
-	  	}
-	  }
-	}
-
-    //Restor data into user arrays
-	foreach ($dateRows as $key => $dateRow) {
-		foreach ($dateRows[$key] as $userid => $antal)
-		{
-			$userStats[$userid][$key] = $antal;
-
-		}
-	}
-
-//Single put one user
-	if($uid){
-		$temp = $userStats;
-		unset($userStats);
-		$userStats[$uid] = $temp[$uid];
-		unset($temp);
-	}
-   ksort($userStats);
-   return $userStats;
+    $userArray = array();
+    $userArray[0] = $newUserArray;
+	return $userArray;
 }
 
 ?>
