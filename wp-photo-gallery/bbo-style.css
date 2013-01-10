@@ -1,0 +1,35 @@
+.gallery-puff{
+-moz-border-radius: 15px;
+border-radius: 15px;
+line-height: 22px;
+padding: 2px 5px;
+background: #97C976;
+cursor:pointer;
+}
+
+.wp-list-table .gallery-puff a{color:#000; font-weight: normal;}
+.wp-list-table .gallery-puff a:hover{color:#000; font-weight: normal;}
+
+.show-gallery-table .gallery-puff a{color:#000; font-weight: normal;}
+.show-gallery-table .gallery-puff a:hover{color:#000; font-weight: normal;}
+
+.show-gallery-table .gallery-delete a{color:#000; font-weight: normal;}
+.show-gallery-table .gallery-delete a:hover{color:#000; font-weight: normal;}
+
+.wp-list-table .gallery-delete a{color:#000; font-weight: normal;}
+.wp-list-table .gallery-delete a:hover{color:#000; font-weight: normal;}
+
+.gallery-delete{
+-moz-border-radius: 15px;
+border-radius: 15px;
+line-height: 22px;
+padding: 2px 5px;
+background: #AAAAAA;
+cursor:pointer;
+
+}
+
+.show-gallery-table{
+	width: 500px;
+	margin-left: 30px;
+}
